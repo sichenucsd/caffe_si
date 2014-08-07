@@ -45,10 +45,10 @@ void* ImageDataLayerPrefetch(void* layer_pointer) {
         << "set at the same time.";
   }
   // datum scales
-  const int channels = layer->datum_channels_;
-  const int height = layer->datum_height_;
-  const int width = layer->datum_width_;
-  const int size = layer->datum_size_;
+  int channels = layer->datum_channels_;
+  int height = layer->datum_height_;
+  int width = layer->datum_width_;
+  int size = layer->datum_size_;
   const int lines_size = layer->lines_.size();
   const Dtype* mean = layer->data_mean_.cpu_data();
   for (int item_id = 0; item_id < batch_size; ++item_id) {
@@ -59,7 +59,13 @@ void* ImageDataLayerPrefetch(void* layer_pointer) {
           new_height, new_width, &datum)) {
       continue;
     }
+    //LOG(ERROR) << layer->lines_[layer->lines_id_].first;
     const string& data = datum.data();
+    channels = datum.channels();
+    height = datum.height();
+    width = datum.width();
+    size = channels * height * width;
+    //LOG(ERROR) << channels << height << width << size;
     if (crop_size) {
       CHECK(data.size()) << "Image cropping only support uint8 data";
       int h_off, w_off;
@@ -71,20 +77,24 @@ void* ImageDataLayerPrefetch(void* layer_pointer) {
         h_off = (height - crop_size) / 2;
         w_off = (width - crop_size) / 2;
       }
+      //LOG(ERROR)<<"10";
       if (mirror && layer->PrefetchRand() % 2) {
+         // LOG(ERROR)<<"11";
         // Copy mirrored version
         for (int c = 0; c < channels; ++c) {
           for (int h = 0; h < crop_size; ++h) {
             for (int w = 0; w < crop_size; ++w) {
-              int top_index = ((item_id * channels + c) * crop_size + h)
+             int top_index = ((item_id * channels + c) * crop_size + h)
                               * crop_size + (crop_size - 1 - w);
               int data_index = (c * height + h + h_off) * width + w + w_off;
+              int mean_index = (c * 256 + h + 14) * 256 + w + 14;
               Dtype datum_element =
                   static_cast<Dtype>(static_cast<uint8_t>(data[data_index]));
-              top_data[top_index] = (datum_element - mean[data_index]) * scale;
+              top_data[top_index] = (datum_element - mean[mean_index]) * scale;
             }
           }
         }
+        //LOG(ERROR) << "mirror";
       } else {
         // Normal copy
         for (int c = 0; c < channels; ++c) {
@@ -93,14 +103,18 @@ void* ImageDataLayerPrefetch(void* layer_pointer) {
               int top_index = ((item_id * channels + c) * crop_size + h)
                               * crop_size + w;
               int data_index = (c * height + h + h_off) * width + w + w_off;
+              int mean_index = (c * 256 + h + 14) * 256 + w + 14;
+
               Dtype datum_element =
                   static_cast<Dtype>(static_cast<uint8_t>(data[data_index]));
-              top_data[top_index] = (datum_element - mean[data_index]) * scale;
+              top_data[top_index] = (datum_element - mean[mean_index]) * scale;
             }
           }
         }
+        //LOG(ERROR) << "normal";
       }
     } else {
+        //LOG(ERROR) << "here?";
       // Just copy the whole data
       if (data.size()) {
         for (int j = 0; j < size; ++j) {
@@ -115,10 +129,11 @@ void* ImageDataLayerPrefetch(void* layer_pointer) {
         }
       }
     }
-
+    //LOG(ERROR) << datum.label();
     top_label[item_id] = datum.label();
     // go to the next iter
     layer->lines_id_++;
+    //LOG(ERROR) << layer->lines_id_;
     if (layer->lines_id_ >= lines_size) {
       // We have reached the end. Restart from the first.
       DLOG(INFO) << "Restarting data prefetching from start.";
@@ -155,6 +170,7 @@ void ImageDataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
   int label;
   while (infile >> filename >> label) {
     lines_.push_back(std::make_pair(filename, label));
+   // LOG(ERROR) << filename << " " << label;
   }
 
   if (this->layer_param_.image_data_param().shuffle()) {
@@ -164,7 +180,7 @@ void ImageDataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
     prefetch_rng_.reset(new Caffe::RNG(prefetch_rng_seed));
     ShuffleImages();
   }
-  LOG(INFO) << "A total of " << lines_.size() << " images.";
+  LOG(ERROR) << "A total of " << lines_.size() << " images.";
 
   lines_id_ = 0;
   // Check if we would need to randomly skip a few data points
@@ -214,8 +230,6 @@ void ImageDataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
     data_mean_.FromProto(blob_proto);
     CHECK_EQ(data_mean_.num(), 1);
     CHECK_EQ(data_mean_.channels(), datum_channels_);
-    CHECK_EQ(data_mean_.height(), datum_height_);
-    CHECK_EQ(data_mean_.width(), datum_width_);
   } else {
     // Simply initialize an all-empty mean.
     data_mean_.Reshape(1, datum_channels_, datum_height_, datum_width_);
@@ -228,6 +242,8 @@ void ImageDataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
   prefetch_label_->mutable_cpu_data();
   data_mean_.cpu_data();
   DLOG(INFO) << "Initializing prefetch";
+  //LOG(ERROR) << "shuffle";
+  //ShuffleImages();
   CreatePrefetchThread();
   DLOG(INFO) << "Prefetch initialized.";
 }
@@ -237,9 +253,7 @@ void ImageDataLayer<Dtype>::CreatePrefetchThread() {
   phase_ = Caffe::phase();
   const bool prefetch_needs_rand =
       this->layer_param_.image_data_param().shuffle() ||
-          ((phase_ == Caffe::TRAIN) &&
-           (this->layer_param_.image_data_param().mirror() ||
-            this->layer_param_.image_data_param().crop_size()));
+      this->layer_param_.image_data_param().crop_size();
   if (prefetch_needs_rand) {
     const unsigned int prefetch_rng_seed = caffe_rng_rand();
     prefetch_rng_.reset(new Caffe::RNG(prefetch_rng_seed));
@@ -254,9 +268,12 @@ void ImageDataLayer<Dtype>::CreatePrefetchThread() {
 template <typename Dtype>
 void ImageDataLayer<Dtype>::ShuffleImages() {
   const int num_images = lines_.size();
+  //LOG(ERROR)<<"1";
   for (int i = 0; i < num_images; ++i) {
     const int max_rand_index = num_images - i;
+    //LOG(ERROR) << "2";
     const int rand_index = PrefetchRand() % max_rand_index;
+    //LOG(ERROR) << "3";
     pair<string, int> item = lines_[rand_index];
     lines_.erase(lines_.begin() + rand_index);
     lines_.push_back(item);
@@ -270,8 +287,10 @@ void ImageDataLayer<Dtype>::JoinPrefetchThread() {
 
 template <typename Dtype>
 unsigned int ImageDataLayer<Dtype>::PrefetchRand() {
+    //LOG(ERROR) << "6";
   caffe::rng_t* prefetch_rng =
       static_cast<caffe::rng_t*>(prefetch_rng_->generator());
+  //LOG(ERROR) << "7";
   return (*prefetch_rng)();
 }
 
@@ -280,11 +299,13 @@ Dtype ImageDataLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top) {
   // First, join the thread
   JoinPrefetchThread();
+  LOG(ERROR) << "prefetch done";
   // Copy the data
   caffe_copy(prefetch_data_->count(), prefetch_data_->cpu_data(),
              (*top)[0]->mutable_cpu_data());
   caffe_copy(prefetch_label_->count(), prefetch_label_->cpu_data(),
              (*top)[1]->mutable_cpu_data());
+  LOG(ERROR) << "copy done";
   // Start a new prefetch thread
   CreatePrefetchThread();
   return Dtype(0.);

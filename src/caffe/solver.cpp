@@ -58,12 +58,12 @@ void Solver<Dtype>::Solve(const char* resume_file) {
     Caffe::SetDevice(param_.device_id());
   }
   Caffe::set_phase(Caffe::TRAIN);
-  LOG(INFO) << "Solving " << net_->name();
+  LOG(ERROR) << "Solving " << net_->name();
   PreSolve();
 
   iter_ = 0;
   if (resume_file) {
-    LOG(INFO) << "Restoring previous solver status from " << resume_file;
+    LOG(ERROR) << "Restoring previous solver status from " << resume_file;
     Restore(resume_file);
   }
 
@@ -84,7 +84,7 @@ void Solver<Dtype>::Solve(const char* resume_file) {
     net_->Update();
 
     if (param_.display() && iter_ % param_.display() == 0) {
-      LOG(INFO) << "Iteration " << iter_ << ", loss = " << loss;
+      LOG(ERROR) << "Iteration " << iter_ << ", loss = " << loss;
     }
     if (param_.test_interval() && iter_ % param_.test_interval() == 0) {
       Test();
@@ -97,13 +97,13 @@ void Solver<Dtype>::Solve(const char* resume_file) {
   // After the optimization is done, always do a snapshot.
   iter_--;
   Snapshot();
-  LOG(INFO) << "Optimization Done.";
+  LOG(ERROR) << "Optimization Done.";
 }
 
 
 template <typename Dtype>
 void Solver<Dtype>::Test() {
-  LOG(INFO) << "Iteration " << iter_ << ", Testing net";
+  LOG(ERROR) << "Iteration " << iter_ << ", Testing net";
   // We need to set phase to test before running.
   Caffe::set_phase(Caffe::TEST);
   CHECK_NOTNULL(test_net_.get())->ShareTrainedLayersWith(net_.get());
@@ -136,10 +136,10 @@ void Solver<Dtype>::Test() {
   }
   if (param_.test_compute_loss()) {
     loss /= param_.test_iter();
-    LOG(INFO) << "Test loss: " << loss;
+    LOG(ERROR) << "Test loss: " << loss;
   }
   for (int i = 0; i < test_score.size(); ++i) {
-    LOG(INFO) << "Test score #" << i << ": "
+    LOG(ERROR) << "Test score #" << i << ": "
         << test_score[i] / param_.test_iter();
   }
   Caffe::set_phase(Caffe::TRAIN);
@@ -156,14 +156,14 @@ void Solver<Dtype>::Snapshot() {
   char iter_str_buffer[kBufferSize];
   snprintf(iter_str_buffer, kBufferSize, "_iter_%d", iter_);
   filename += iter_str_buffer;
-  LOG(INFO) << "Snapshotting to " << filename;
+  LOG(ERROR) << "Snapshotting to " << filename;
   WriteProtoToBinaryFile(net_param, filename.c_str());
   SolverState state;
   SnapshotSolverState(&state);
   state.set_iter(iter_);
   state.set_learned_net(filename);
   filename += ".solverstate";
-  LOG(INFO) << "Snapshotting solver state to " << filename;
+  LOG(ERROR) << "Snapshotting solver state to " << filename;
   WriteProtoToBinaryFile(state, filename.c_str());
 }
 
