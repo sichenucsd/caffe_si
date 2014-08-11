@@ -27,13 +27,14 @@ int main(int argc, char** argv) {
 
 	caffe::Datum datum;
 
-	datum.ParseFromString(iter_->value().ToString());
-	const string& data = datum.data();
+        datum.ParseFromString(iter_->value().ToString());
+	//const string& data = datum.data();
 	int datum_size = datum.channels()*datum.height()*datum.width();
 	for (int i = 0; i <datum_size; i++) {
-		LOG(ERROR) << data[i];
+		LOG(ERROR) << datum.float_data(i);
+                LOG(ERROR) << i;
 	}
-
+        LOG(ERROR) << iter_->key().ToString();
 return 0;
 
 
