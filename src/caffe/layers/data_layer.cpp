@@ -51,7 +51,7 @@ void* DataLayerPrefetch(void* layer_pointer) {
     datum.ParseFromString(layer->iter_->value().ToString());
     const string& data = datum.data();
     if (crop_size) {
-      CHECK(data.size()) << "Image cropping only support uint8 data";
+      //CHECK(data.size()) << "Image cropping only support uint8 data";
       int h_off, w_off;
       // We only do random crop when we do training.
       if (layer->phase_ == Caffe::TRAIN) {
@@ -70,7 +70,7 @@ void* DataLayerPrefetch(void* layer_pointer) {
                               * crop_size + (crop_size - 1 - w);
               int data_index = (c * height + h + h_off) * width + w + w_off;
               Dtype datum_element =
-                  static_cast<Dtype>(static_cast<uint8_t>(data[data_index]));
+                  static_cast<Dtype>(datum.float_data(data_index));
               top_data[top_index] = (datum_element - mean[data_index]) * scale;
             }
           }
@@ -84,7 +84,7 @@ void* DataLayerPrefetch(void* layer_pointer) {
                               * crop_size + w;
               int data_index = (c * height + h + h_off) * width + w + w_off;
               Dtype datum_element =
-                  static_cast<Dtype>(static_cast<uint8_t>(data[data_index]));
+                  static_cast<Dtype>(datum.float_data(data_index));
               top_data[top_index] = (datum_element - mean[data_index]) * scale;
             }
           }

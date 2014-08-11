@@ -61,7 +61,7 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
     available_blobs.insert(blob_name);
     memory_used += blob_pointer->count();
   }
-  DLOG(INFO) << "Memory required for Data" << memory_used*sizeof(Dtype);
+  LOG(ERROR) << "Memory required for Data" << memory_used*sizeof(Dtype);
   // For each layer, set up their input and output
   bottom_vecs_.resize(param.layers_size());
   top_vecs_.resize(param.layers_size());
@@ -72,7 +72,7 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
     const LayerParameter& layer_param = param.layers(i);
     layers_.push_back(shared_ptr<Layer<Dtype> >(GetLayer<Dtype>(layer_param)));
     layer_names_.push_back(layer_param.name());
-    LOG(INFO) << "Creating Layer " << layer_param.name();
+    LOG(ERROR) << "Creating Layer " << layer_param.name();
     bool need_backward = param.force_backward();
     // Figure out this layer's input and output
     for (int j = 0; j < layer_param.bottom_size(); ++j) {
@@ -82,7 +82,7 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
         LOG(FATAL) << "Unknown blob input " << blob_name <<
             " to layer" << j;
       }
-      LOG(INFO) << layer_param.name() << " <- " << blob_name;
+      LOG(ERROR) << layer_param.name() << " <- " << blob_name;
       bottom_vecs_[i].push_back(
           blobs_[blob_id].get());
       bottom_id_vecs_[i].push_back(blob_id);
@@ -96,7 +96,7 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
       if (layer_param.bottom_size() > j &&
           blob_name == layer_param.bottom(j)) {
         // In-place computation
-        LOG(INFO) << layer_param.name() << " -> " << blob_name << " (in-place)";
+        LOG(ERROR) << layer_param.name() << " -> " << blob_name << " (in-place)";
         in_place = true;
         available_blobs.insert(blob_name);
         top_vecs_[i].push_back(
@@ -108,7 +108,7 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
         LOG(FATAL) << "Duplicate blobs produced by multiple sources.";
       } else {
         // Normal output.
-        LOG(INFO) << layer_param.name() << " -> " << blob_name;
+        LOG(ERROR) << layer_param.name() << " -> " << blob_name;
         shared_ptr<Blob<Dtype> > blob_pointer(new Blob<Dtype>());
         blobs_.push_back(blob_pointer);
         blob_names_.push_back(blob_name);
@@ -123,7 +123,7 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
     // LOG(INFO) << "Setting up " << layer_names_[i];
     layers_[i]->SetUp(bottom_vecs_[i], &top_vecs_[i]);
     for (int topid = 0; topid < top_vecs_[i].size(); ++topid) {
-      LOG(INFO) << "Top shape: " << top_vecs_[i][topid]->num() << " "
+      LOG(ERROR) << "Top shape: " << top_vecs_[i][topid]->num() << " "
           << top_vecs_[i][topid]->channels() << " "
           << top_vecs_[i][topid]->height() << " "
           << top_vecs_[i][topid]->width() << " ("
@@ -131,7 +131,7 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
       if (!in_place)
         memory_used += top_vecs_[i][topid]->count();
     }
-    DLOG(INFO) << "Memory  required for Data " << memory_used*sizeof(Dtype);
+    LOG(ERROR) << "Memory  required for Data " << memory_used*sizeof(Dtype);
     int blobs_lr_size = layers_[i]->layer_param().blobs_lr_size();
     CHECK(blobs_lr_size == layers_[i]->blobs().size() || blobs_lr_size == 0)
         << "Incorrect blobs lr size: should be either 0 or the same as "
@@ -149,18 +149,18 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
     // Finally, set the backward flag
     layer_need_backward_.push_back(need_backward);
     if (need_backward) {
-      LOG(INFO) << layer_names_[i] << " needs backward computation.";
+      LOG(ERROR) << layer_names_[i] << " needs backward computation.";
       for (int j = 0; j < top_id_vecs_[i].size(); ++j) {
         blob_need_backward_[top_id_vecs_[i][j]] = true;
       }
     } else {
-      LOG(INFO) << layer_names_[i] << " does not need backward computation.";
+      LOG(ERROR) << layer_names_[i] << " does not need backward computation.";
     }
   }
   // In the end, all remaining blobs are considered output blobs.
   for (set<string>::iterator it = available_blobs.begin();
       it != available_blobs.end(); ++it) {
-    LOG(INFO) << "This network produces output " << *it;
+    LOG(ERROR) << "This network produces output " << *it;
     net_output_blobs_.push_back(blobs_[blob_name_to_idx[*it]].get());
     net_output_blob_indices_.push_back(blob_name_to_idx[*it]);
   }
@@ -171,8 +171,8 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
     layer_names_index_[layer_names_[i]] = i;
   }
   GetLearningRateAndWeightDecay();
-  LOG(INFO) << "Network initialization done.";
-  LOG(INFO) << "Memory required for Data " << memory_used*sizeof(Dtype);
+  LOG(ERROR) << "Network initialization done.";
+  LOG(ERROR) << "Memory required for Data " << memory_used*sizeof(Dtype);
 }
 
 

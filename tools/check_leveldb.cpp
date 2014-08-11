@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
 	caffe::Datum datum;
 
         datum.ParseFromString(iter_->value().ToString());
-	//const string& data = datum.data();
+	//const string& data = datum.float_data();
 	int datum_size = datum.channels()*datum.height()*datum.width();
 	for (int i = 0; i <datum_size; i++) {
 		LOG(ERROR) << datum.float_data(i);
