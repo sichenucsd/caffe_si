@@ -43,7 +43,6 @@ void* DataLayerPrefetch(void* layer_pointer) {
   const int height = layer->datum_height_;
   const int width = layer->datum_width_;
   const int size = layer->datum_size_;
-  const Dtype* mean = layer->data_mean_.cpu_data();
   for (int item_id = 0; item_id < batch_size; ++item_id) {
     // get a blob
     CHECK(layer->iter_);
@@ -71,7 +70,7 @@ void* DataLayerPrefetch(void* layer_pointer) {
               int data_index = (c * height + h + h_off) * width + w + w_off;
               Dtype datum_element =
                   static_cast<Dtype>(datum.float_data(data_index));
-              top_data[top_index] = (datum_element - mean[data_index]) * scale;
+              top_data[top_index] = (datum_element) * scale;
             }
           }
         }
@@ -85,25 +84,18 @@ void* DataLayerPrefetch(void* layer_pointer) {
               int data_index = (c * height + h + h_off) * width + w + w_off;
               Dtype datum_element =
                   static_cast<Dtype>(datum.float_data(data_index));
-              top_data[top_index] = (datum_element - mean[data_index]) * scale;
+              top_data[top_index] = (datum_element) * scale;
             }
           }
         }
       }
     } else {
       // we will prefer to use data() first, and then try float_data()
-      if (data.size()) {
-        for (int j = 0; j < size; ++j) {
-          Dtype datum_element =
-              static_cast<Dtype>(static_cast<uint8_t>(data[j]));
-          top_data[item_id * size + j] = (datum_element - mean[j]) * scale;
-        }
-      } else {
+
         for (int j = 0; j < size; ++j) {
           top_data[item_id * size + j] =
-              (datum.float_data(j) - mean[j]) * scale;
+              (datum.float_data(j)) * scale;
         }
-      }
     }
 
     if (layer->output_labels_) {
@@ -182,7 +174,7 @@ void DataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
         this->layer_param_.data_param().batch_size(), datum.channels(),
         datum.height(), datum.width()));
   }
-  LOG(INFO) << "output data size: " << (*top)[0]->num() << ","
+  LOG(ERROR) << "output data size: " << (*top)[0]->num() << ","
       << (*top)[0]->channels() << "," << (*top)[0]->height() << ","
       << (*top)[0]->width();
   // label
@@ -201,7 +193,7 @@ void DataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
   // check if we want to have mean
   if (this->layer_param_.data_param().has_mean_file()) {
     const string& mean_file = this->layer_param_.data_param().mean_file();
-    LOG(INFO) << "Loading mean file from" << mean_file;
+    LOG(ERROR) << "Loading mean file from" << mean_file;
     BlobProto blob_proto;
     ReadProtoFromBinaryFileOrDie(mean_file.c_str(), &blob_proto);
     data_mean_.FromProto(blob_proto);
