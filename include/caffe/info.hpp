@@ -92,6 +92,7 @@ class BlobRelatedInfo : public Info<Dtype> {
       Dtype diff_min = 0;
       Dtype data_mean = 0;
       Dtype diff_mean = 0;
+
       for (int i = 0; i < blob.count(); ++i) {
         data_mean += blob_cpu_data[i];
         data_max = (blob_cpu_data[i] > data_max) ? blob_cpu_data[i] : data_max;
