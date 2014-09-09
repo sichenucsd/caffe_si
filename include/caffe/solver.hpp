@@ -5,7 +5,7 @@
 
 #include <string>
 #include <vector>
-
+#include "caffe/info.hpp"
 namespace caffe {
 
 template <typename Dtype>
@@ -45,7 +45,7 @@ class Solver {
   int iter_;
   shared_ptr<Net<Dtype> > net_;
   shared_ptr<Net<Dtype> > test_net_;
-
+  vector<shared_ptr<Info<Dtype> > > info_;
   DISABLE_COPY_AND_ASSIGN(Solver);
 };
 

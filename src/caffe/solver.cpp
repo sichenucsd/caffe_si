@@ -38,15 +38,19 @@ void Solver<Dtype>::Init(const SolverParameter& param) {
     Caffe::set_random_seed(param_.random_seed());
   }
   // Scaffolding code
-  LOG(INFO) << "Creating training net.";
+  LOG(ERROR) << "Creating training net.";
   net_.reset(new Net<Dtype>(param_.train_net()));
   if (param_.has_test_net()) {
-    LOG(INFO) << "Creating testing net.";
+    LOG(ERROR) << "Creating testing net.";
     test_net_.reset(new Net<Dtype>(param_.test_net()));
     CHECK_GT(param_.test_iter(), 0);
     CHECK_GT(param_.test_interval(), 0);
   }
-  LOG(INFO) << "Solver scaffolding done.";
+  LOG(ERROR) << "Installing info monitor.";
+  for (int i = 0; i < param_.info_size(); ++i) {
+	info_.push_back(shared_ptr<Info<Dtype> >(GetInfo<Dtype>(param_.info(i), net_)));
+  }
+  LOG(ERROR) << "Solver scaffolding done.";
 }
 
 
@@ -82,7 +86,9 @@ void Solver<Dtype>::Solve(const char* resume_file) {
     Dtype loss = net_->ForwardBackward(bottom_vec);
     ComputeUpdateValue();
     net_->Update();
-
+	for (int i = 0; i < info_.size(); i++) {
+		info_[i].get()->Iter(loss, iter_);
+	}
     if (param_.display() && iter_ % param_.display() == 0) {
       LOG(ERROR) << "Iteration " << iter_ << ", loss = " << loss;
     }
